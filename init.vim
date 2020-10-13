@@ -1,10 +1,12 @@
 packadd termdebug
-let g:ale_disable_lsp = 1
+" let g:ale_disable_lsp = 1
 
 call plug#begin()
 "Main engines
 Plug 'neovim/nvim-lsp' "Lsp for neovim
 Plug 'nvim-treesitter/nvim-treesitter' "Treesitter for better highlighting
+Plug 'nvim-treesitter/nvim-treesitter-textobjects'
+Plug 'nvim-treesitter/nvim-treesitter-refactor'
 Plug 'neovim/nvim-lspconfig'
 "Better finding
 Plug 'nvim-lua/popup.nvim'
@@ -16,7 +18,7 @@ Plug 'steelsojka/completion-buffers' "Completion from buffers
 Plug 'aca/completion-tabnine', { 'do': './install.sh' } "tabnine source
 "Diagnostics and Linting
 Plug 'nvim-lua/diagnostic-nvim' "Improve diagnostics
-Plug 'dense-analysis/ale' "Linting and fixing
+" Plug 'dense-analysis/ale' "Linting and fixing
 "Snippets
 Plug 'https://github.com/SirVer/ultisnips.git' "Snipper manager
 Plug 'https://github.com/honza/vim-snippets.git' "Snippets
@@ -91,7 +93,21 @@ end
     highlight = {
       enable = true
     },
+    refactor = {
+      highlight_definitions = { enable = true },
+    },
   }
+
+require('telescope').setup {
+  defaults = {
+    mappings = {
+      i = {
+        ["<c-q>"] = require('telescope.actions').close,
+      },
+    },
+  }
+}
+
 END
 
 autocmd BufEnter * lua require'completion'.on_attach()
@@ -128,7 +144,7 @@ nmap <silent> <leader>p :YanksAfter<CR>
 
 " Cycle yanks with Ctrl+p
 nmap <C-p> <Plug>(miniyank-cycle)<CR>
-nmap <C-n> <Plug>(miniyank-cycleback)<CR>
+nmap <C-S-p> <Plug>(miniyank-cycleback)<CR>
 
 " Define prefix dictionary
 let g:which_key_map =  {}
@@ -158,29 +174,23 @@ let g:which_key_map.g = {
 
 let g:which_key_map.w = {
   \ 'name' : '+window' ,
-  \ 'h' : ['<C-w>h'     , 'focus-left']             ,
-  \ 'j' : ['<C-w>j'     , 'focus-down']             ,
-  \ 'k' : ['<C-w>k'     , 'focus-up']               ,
-  \ 'l' : ['<C-w>l'     , 'focus-right']            ,
+  \ 'h' : ['<M-h>'      , 'focus-left']             ,
+  \ 'j' : ['<M-j>'      , 'focus-down']             ,
+  \ 'k' : ['<M-k>'      , 'focus-up']               ,
+  \ 'l' : ['<M-l>'      , 'focus-right']            ,
   \ 'n' : ['vnew'       , 'open-vertical-window']   ,
   \ 'N' : ['new'        , 'open-horizontal-window'] ,
-  \ 'q' : ['wq'         , 'save-and-quit']          ,
-  \ 'Q' : ['quit!'      , 'quit-without-saving']    ,
   \ '|' : ['vsplit'     , 'split-window-right']     ,
   \ '-' : ['split'      , 'split-window-below']     ,
   \ 'o' : ['only'       , 'focus-current-window']   ,
   \ 'w' : ['<C-W>w'     , 'other-window']           ,
   \ 'd' : ['<C-W>c'     , 'delete-window']          ,
   \ '2' : ['<C-W>v'     , 'layout-double-columns']  ,
-  \ 'H' : ['<C-W>5<'    , 'expand-window-left']     ,
-  \ 'J' : ['resize +5'  , 'expand-window-below']    ,
-  \ 'L' : ['<C-W>5>'    , 'expand-window-right']    ,
-  \ 'K' : ['resize -5'  , 'expand-window-up']       ,
   \ '=' : ['<C-W>='     , 'balance-window']         ,
   \ '?' : ['Windows'    , 'fzf-window']             ,
   \ }
 
-let g:which_key_map.B = {
+let g:which_key_map.b = {
   \ 'name' : '+buffers' ,
   \ 'd' : ['bdelete'                                    , 'close-buffer']     ,
   \ 'j' : ['bnext'                                      , 'next-buffer']      ,
@@ -188,8 +198,6 @@ let g:which_key_map.B = {
   \ 'l' : ['blast'                                      , 'last-buffer']      ,
   \ 'b' : [':lua require"telescope.builtin".buffers{}'  , 'search-buffers']   ,
   \ }
-let g:which_key_map.b = 'search-buffers'
-nnoremap <leader>b :lua require'telescope.builtin'.buffers{}<CR>
 
 let g:which_key_map.f = {
   \ 'name' : '+find'  ,
@@ -199,7 +207,6 @@ let g:which_key_map.f = {
   \ 'b' : [':lua require"telescope.builtin".buffers{}'                , 'buffers']              ,
   \ 'r' : [':lua require"telescope.builtin".live_grep{}'              , 'grep']                 ,
   \ 't' : ['Tags'                                                     , 'tags']                 ,
-  \ 'T' : ['BTags'                                                    , 'tags-current-buffer']  ,
   \ 'm' : ['Marks'                                                    , 'marks']                ,
   \ 'o' : [':lua require"telescope.builtin".oldfiles{}'               , 'oldfiles']             ,
   \ 'q' : [':lua require"telescope.builtin".quickfix{}'               , 'quickfixes']           ,
@@ -219,29 +226,28 @@ let g:which_key_map.f._ = {
   \ 'm' : ['Maps'         , 'keymaps']              ,
   \ 'H' : ['Helptags'     , 'help-tags']            ,
   \ 'i' : ['Filetypes'    , 'filetypes']            ,
+  \ 't' : ['BTags'        , 'tags-current-buffer']  ,
 \ }
 
 
-let g:which_key_map.L = { 
+let g:which_key_map.l = { 
   \ 'name' : '+lsp'  ,
   \  'r' : [':lua require"telescope.builtin".lsp_references{}'        , 'references']  ,
-  \  'd' : [':lua require"telescope.builtin".lsp_document_symbols{}'  , 'document-symbols']  ,
-  \  'w' : [':lua require"telescope.builtin".lsp_workspace_symbols{}' , 'workspace-symbols']  ,
+  \  's' : [':lua require"telescope.builtin".lsp_document_symbols{}'  , 'document-symbols']  ,
+  \  'S' : [':lua require"telescope.builtin".lsp_workspace_symbols{}' , 'workspace-symbols']  ,
   \  't' : [':lua require"telescope.builtin".treesitter{}'            , 'treesitter']  ,
-  \  'u' : [':lua vim.lsp.buf.declaration()'                          , 'declaration']  ,
+  \  'd' : [':lua vim.lsp.buf.declaration()'                          , 'declaration']  ,
   \  'D' : [':lua vim.lsp.buf.definition()'                           , 'definition']  ,
   \  'h' : [':lua vim.lsp.buf.hover()'                                , 'hover']  ,
   \  'i' : [':lua vim.lsp.buf.implementation()'                       , 'implementation']  ,
   \  'g' : [':lua vim.lsp.buf.signature_help()'                       , 'signature-help']  ,
   \  'T' : [':lua vim.lsp.buf.type_definition()'                      , 'type-definition']  ,
-  \  'p' : [':lua require"lsp_util".peek_definition()'                , 'references']  ,
-  \  'b' : [':lua vim.lsp.buf.formatting()'                           , 'references']  ,
-  \  'c' : [':lua vim.lsp.buf.code_action()'                          , 'references']  ,
-  \  'P' : [':lua vim.lsp.buf.rename()'                               , 'references']  ,
-  \  'o' : [':lua require"diagnostic.util".show_line_diagnostics()'   , 'references']  ,
-  \  'n' : [':NextDiagnostic'                                          , 'references']  ,
-  \  'm' : [':PrevDiagnostic'                                          , 'references']  ,
-  \  'O' : [':OpenDiagnostic'                                          , 'references']  ,
+  \  'p' : [':lua require"lsp_util".peek_definition()'                , 'peek-definition']  ,
+  \  'b' : [':lua vim.lsp.buf.formatting()'                           , 'format']  ,
+  \  'c' : [':lua vim.lsp.buf.code_action()'                          , 'code-acion']  ,
+  \  'P' : [':lua vim.lsp.buf.rename()'                               , 'rename']  ,
+  \  'o' : [':lua require"diagnostic.util".show_line_diagnostics()'   , 'line-diagnostics']  ,
+  \  'O' : [':OpenDiagnostic'                                         , 'error-list']  ,
 \ }
 
 ""Lsp stuff
@@ -278,35 +284,62 @@ let g:which_key_map.9="diagnostic"
 nnoremap <silent> <leader>9 :OpenDiagnostic<CR>
 
 "Key Remaps
-let g:which_key_map.h="beg-of-line"
-nnoremap <leader>h ^
-
-let g:which_key_map.l="end-of-line"
-nnoremap <leader>l $
-
+"
 let g:which_key_map.s="next-spell-err"
 nnoremap <leader>s ]s
 
 let g:which_key_map.S="prev-spell-err"
 nnoremap <leader>S [s
 
+let g:which_key_map.r="rename"
+nnoremap <leader>r :lua vim.lsp.buf.rename()<CR>
+
 nnoremap <silent> <leader>\ :nohlsearch<CR>
 
 "Quick search mappings"
-nnoremap <silent> <C-g> :lua require"telescope.builtin".live_grep{}<CR>
-nnoremap <silent> <C-s> :lua require"telescope.builtin".find_files{}<CR>
-nnoremap <silent> <C-Space> :lua require"telescope.builtin".find_files{}<CR>
-nnoremap <silent> <C-q> :lua require"telescope.builtin".quickfix{}<CR>
-nnoremap <silent> <C-l> :lua require"telescope.builtin".loclist{}<CR>
+nnoremap <silent> <C-g> :lua require"telescope.builtin".git_files{}<CR>
+nnoremap <silent> <C-S-Space> :lua require"telescope.builtin".find_files{}<CR>
+nnoremap <silent> <C-Space> :lua require"telescope.builtin".live_grep{}<CR>
+nnoremap <silent> <C-m> :lua require"telescope.builtin".quickfix{}<CR>
+nnoremap <silent> <C-S-m> :lua require"telescope.builtin".loclist{}<CR>
+
+"Error mappings
+nnoremap <C-e> :NextDiagnostic<CR>
+nnoremap <C-S-e> :PrevDiagnostic<CR>
+nnoremap <M-e> :OpenDiagnostic<CR>
+
+"LSP Symbols mappings
+nnoremap <C-s> :lua require'telescope.builtin'.lsp_document_symbols{}<CR>
+nnoremap <C-S-s> :lua require'telescope.builtin'.lsp_workspace_symbols{}<CR>
+nnoremap <M-s> :lua require'telescope.builtin'.lsp_references{}<CR>
+
+"Declaration and Definition mappings
+nnoremap <C-o> :lua vim.lsp.buf.declaration()'<CR>
+nnoremap <C-S-o> :lua vim.lsp.buf.definition()'<CR>
+nnoremap <M-o> :lua vim.lsp.buf.type_definition()'<CR>
+
+"Quick commands
+nnoremap <C-c> :lua require"telescope.builtin".command_history{}<CR>
+
+"Notes
+nnoremap <C-n> :lua vim.lsp.buf.hover()<CR>
+nnoremap <C-S-n> :lua vim.lsp.buf.signature_help()<CR>
+nnoremap <M-n> :lua require"diagnostic.util".show_line_diagnostics()<CR>
 
 "Improved maps
 nnoremap <M-h> <C-w>h
 nnoremap <M-j> <C-w>j
 nnoremap <M-k> <C-w>k
 nnoremap <M-l> <C-w>l
-nnoremap <C-S-o> <C-I>
 nnoremap \ :vsplit<CR>
 nnoremap - :split<CR>
+nnoremap <C-h> ^
+vnoremap <C-h> ^
+nnoremap <C-j> <C-i>
+nnoremap <C-k> <C-o>
+nnoremap <C-l> $
+vnoremap <C-l> $
+nnoremap <C-q> :bdelete<CR>
 
 "Allow line navigation"
 nnoremap j gj
@@ -351,7 +384,11 @@ set conceallevel=0 "Set conceal to 0 so we can see guide lines
 set completeopt=menuone,noinsert,noselect
 set cursorline
 
-set foldenable foldlevelstart=10 foldnestmax=10 foldmethod=manual " setup folding
+set foldenable 
+set foldlevelstart=10 
+set foldnestmax=10 
+set foldmethod=expr
+set foldexpr=nvim_treesitter#foldexpr()
 
 set gdefault "when substituting use g by default
 
@@ -405,17 +442,17 @@ set wildignore+=*.a,*.o,*.pyc,*~,*.swp,*.tmp
 "Plugin Configurations
 
 "Ale
-let g:ale_fixers = {
-\   '*': ['remove_trailing_lines', 'trim_whitespace'],
-\   'javascript': ['prettier']    
-\}
+" let g:ale_fixers = {
+" \   '*': ['remove_trailing_lines', 'trim_whitespace'],
+" \   'javascript': ['prettier']    
+" \}
 
-nnoremap <C-j> <Plug>(ale_previous_wrap)
-nnoremap <C-k> <Plug>(ale_next_wrap)
-nnoremap <leader>E <Plug>(ale_previous_wrap)<CR>
-nnoremap <leader>e <Plug>(ale_next_wrap)<CR>
-let g:ale_sign_error = ''
-let g:ale_sign_warning = ''
+" nnoremap <C-j> <Plug>(ale_previous_wrap)
+" nnoremap <C-k> <Plug>(ale_next_wrap)
+" nnoremap <leader>E <Plug>(ale_previous_wrap)<CR>
+" nnoremap <leader>e <Plug>(ale_next_wrap)<CR>
+" let g:ale_sign_error = ''
+" let g:ale_sign_warning = ''
 
 "Buftabline
 let g:buftabline_show=1
@@ -443,6 +480,9 @@ imap <c-j> <Plug>(completion_next_source)
 imap <c-k> <Plug>(completion_prev_source)
 let g:completion_enable_snippet = 'UltiSnips'
 
+"Context
+let g:context_add_mappings = 0
+
 "Diagnostic
 let g:diagnostic_enable_virtual_text = 1
 let g:diagnostic_virtual_text_prefix = ''
@@ -467,6 +507,7 @@ let g:gitgutter_sign_removed_first_line = '^'
 let g:gitgutter_sign_modified_removed = '<'
 let g:gitgutter_override_sign_column_highlight = 1
 highlight SignColumn guibg=bg
+let g:gitgutter_map_keys = 0
 
 "Indent line
 let g:indentLine_setColors = 0
