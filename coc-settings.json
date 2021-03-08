@@ -1,9 +1,0 @@
-{
-    "python.venvPath" : "~/Code/python/.virtualenvs",
-    "python.jediEnabled": false,
-    "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.linting.pylintEnabled": false,
-    "diagnostic.checkCurrentLine": true,
-}
-
