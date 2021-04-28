@@ -2,7 +2,7 @@ call plug#begin()
 "LSP
 Plug 'neovim/nvim-lsp' "Lsp for neovim
 Plug 'neovim/nvim-lspconfig' "Lsp for neovim
-Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}  " We recommend updating the parsers on update
+Plug 'nvim-treesitter/nvim-treesitter', " We recommend updating the parsers on update
 Plug 'nvim-treesitter/nvim-treesitter-textobjects'
 Plug 'nvim-treesitter/nvim-treesitter-refactor'
 Plug 'romgrk/nvim-treesitter-context'
@@ -12,7 +12,10 @@ Plug 'kosayoda/nvim-lightbulb'
 ""Better finding
 Plug 'nvim-lua/popup.nvim'
 Plug 'nvim-lua/plenary.nvim'
-Plug 'nvim-lua/telescope.nvim'
+Plug 'nvim-telescope/telescope.nvim'
+Plug 'nvim-telescope/telescope-fzy-native.nvim'
+Plug 'https://github.com/tpope/vim-fugitive.git'
+Plug 'https://github.com/nacro90/numb.nvim.git'
 
 "Completion Sources
 Plug 'https://github.com/hrsh7th/nvim-compe.git'
@@ -22,11 +25,13 @@ Plug 'tzachar/compe-tabnine', { 'do': './install.sh' }
 Plug 'https://github.com/SirVer/ultisnips.git' "Snipper manager
 Plug 'https://github.com/honza/vim-snippets.git' "Snippets
 
-""Appearance
-Plug 'https://github.com/Yggdroot/indentLine.git' " Line guides
+"Appearance
+Plug 'https://github.com/lukas-reineke/indent-blankline.nvim.git', { 'branch': 'lua' }
+Plug 'lewis6991/gitsigns.nvim'
 Plug 'https://github.com/ap/vim-buftabline.git' " Display loaded buffers
 Plug 'https://github.com/kshenoy/vim-signature.git' "Display marks
-Plug 'mhinz/vim-signify' "Git gutter
+Plug 'bryall/contextprint.nvim'
+" Plug 'mhinz/vim-signify' "Git gutter
 Plug 'hoob3rt/lualine.nvim'
 Plug 'ryanoasis/vim-devicons' "Icons
 Plug 'danilamihailov/beacon.nvim' "Show new jump location
@@ -41,12 +46,14 @@ Plug 'https://github.com/tpope/vim-eunuch.git' "Add unix commands
 Plug 'https://github.com/chaoren/vim-wordmotion.git' "Camel Case motion
 Plug 'haya14busa/incsearch.vim' "Easy motion incremental search
 Plug 'luochen1990/rainbow' "Rainbow parentheses
+Plug 'https://github.com/bronson/vim-visual-star-search.git'
 Plug 'https://github.com/bfredl/nvim-miniyank.git' "Yank ring plugin
 Plug 'https://github.com/machakann/vim-sandwich.git' "Change wrapping chars
 Plug 'https://github.com/unblevable/quick-scope.git' "Find unique chars
 Plug 'https://github.com/jiangmiao/auto-pairs.git' "Insert pairs
 Plug 'https://github.com/airblade/vim-rooter.git' "Change to root
 Plug 'numtostr/FTerm.nvim'
+Plug 'kevinhwang91/nvim-hlslens'
 
 ""Popups
 Plug 'liuchengxu/vim-which-key' " Which key to press
@@ -75,34 +82,41 @@ Plug 'https://github.com/tomasr/molokai.git' "Molokai theme
 Plug 'https://github.com/sonph/onehalf.git' "Good dark colorscheme
 Plug 'https://github.com/jnurmine/Zenburn.git' "Zenburn theme
 Plug 'dracula/vim', { 'as': 'dracula' } "Dracula theme
-
 call plug#end()
 
-"Language servers"
 :lua << END
-    require 'nvim-treesitter.configs'.setup {
-        ensure_installed = "all",
-        highlight = {
-            enable = true
-        },
-        refactor = {
-            highlight_definitions = { enable = true },
-        },
-    }
 
+    local actions = require('telescope.actions')
     require('telescope').setup {
         defaults = {
+            file_sorter = require('telescope.sorters').get_fzy_sorter,
+            prompt_prefix = ' >',
+            color_devicons = true,
+
+            file_previewer   = require('telescope.previewers').vim_buffer_cat.new,
+            grep_previewer   = require('telescope.previewers').vim_buffer_vimgrep.new,
+            qflist_previewer = require('telescope.previewers').vim_buffer_qflist.new,
+
             mappings = {
                 i = {
                     ["<c-q>"] = require('telescope.actions').close,
+                    ["<C-l>"] = actions.send_to_qflist,
                 },
-            },
+            }
+        },
+        extensions = {
+            fzy_native = {
+                override_generic_sorter = false,
+                override_file_sorter = true,
+            }
         }
     }
 
-    local lualine = require('lualine')
-    lualine.status()
-    lualine.theme = 'dracula'
+    require('lualine').setup{
+        options = {
+            theme = 'dracula'
+        }
+    }
 
     vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(
         vim.lsp.diagnostic.on_publish_diagnostics, {
@@ -117,6 +131,19 @@ call plug#end()
         }
     )
 
+    require ('gitsigns').setup()
+
+    require ('numb').setup()
+
+    require 'nvim-treesitter.configs'.setup {
+        highlight = {
+            enable = true
+        },
+        refactor = {
+            highlight_definitions = { enable = true },
+        },
+    }
+
     require 'lspconfig'.tsserver.setup{}
     require 'lspconfig'.pyls.setup{}
     require 'lspconfig'.html.setup{}
@@ -126,6 +153,7 @@ call plug#end()
     require 'lspconfig'.sqlls.setup{
         cmd = {"sql-language-server", "up", "--method", "stdio"}
     }
+
 END
 
 "leader remap
@@ -156,8 +184,10 @@ let g:UltiSnipsJumpBackwardTrigger="<c-k>"
 " Override default p and P
 nmap p <Plug>(miniyank-autoput)
 nmap P <Plug>(miniyank-autoPut)
+nmap P <Plug>(miniyank-autoPut)
 nmap <C-p> <Plug>(miniyank-cycle)<CR>
 nmap <M-p> <Plug>(miniyank-cycleback)<CR>
+let g:AutoPairsShortcutToggle = '<M-C-p>'
 
 " Define prefix dictionary
 let g:which_key_map =  {}
@@ -325,7 +355,7 @@ nnoremap <silent> <leader>fr :lua require"telescope.builtin".lsp_references{}<CR
 nnoremap <silent> <leader>fs :lua require"telescope.builtin".lsp_document_symbols{}<CR>
 nnoremap <silent> <leader>fS :lua require"telescope.builtin".lsp_workspace_symbols{}<CR>
 
-"Declaration and Definition mappings
+"Declaration and Definition mappings (origin)
 nnoremap <C-o> :lua vim.lsp.buf.declaration()'<CR>
 nnoremap <M-o> :lua vim.lsp.buf.definition()'<CR>
 nnoremap <M-C-o> :lua vim.lsp.buf.type_definition()'<CR>
@@ -347,6 +377,8 @@ nnoremap \ :vsplit<CR>
 nnoremap - :split<CR>
 vnoremap <C-h> ^
 nnoremap <C-j> <C-i>
+nnoremap ]j <C-i>
+nnoremap [j <C-o>
 nnoremap <C-k> <C-o>
 vnoremap <C-l> $
 nnoremap <C-q> :bdelete<CR>
@@ -412,7 +444,6 @@ set inccommand=nosplit
 
 set linebreak " Break lines at words
 set lazyredraw "faster on large files
-set lazyredraw " only redraw when necessary
 set list
 set listchars=tab:>~,trail:~,extends:>,precedes:<,nbsp:_
 
@@ -452,6 +483,16 @@ set wildmenu wildchar=<TAB> wildmode=list:longest,full
 set wildignore+=*.a,*.o,*.pyc,*~,*.swp,*.tmp
 
 "Plugin Configurations
+"
+" HL search
+noremap <silent> n <Cmd>execute('normal! ' . v:count1 . 'n')<CR>
+            \<Cmd>lua require('hlslens').start()<CR>
+noremap <silent> N <Cmd>execute('normal! ' . v:count1 . 'N')<CR>
+            \<Cmd>lua require('hlslens').start()<CR>
+noremap * *<Cmd>lua require('hlslens').start()<CR>
+noremap # #<Cmd>lua require('hlslens').start()<CR>
+noremap g* g*<Cmd>lua require('hlslens').start()<CR>
+noremap g# g#<Cmd>lua require('hlslens').start()<CR>
 
 "Buftabline
 let g:buftabline_show=1
@@ -492,9 +533,7 @@ let g:fzf_preview_window = 'right:60%'
 highlight SignColumn guibg=bg
 
 "Indent line
-let g:indentLine_setColors = 0
 let g:indentLine_char = '┃'
-let g:indenLine_setConceal=0
 
 tnoremap <Esc> <C-\><C-n>
 
